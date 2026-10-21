@@ -19,6 +19,43 @@ require_python310() {
   fi
 }
 
+prepare_audio() {
+  if ! pactl info >/dev/null; then
+    printf 'Cannot connect to the audio server. Start PipeWire with pipewire-pulse (or PulseAudio) in your desktop session.\n' >&2
+    exit 1
+  fi
+
+  if ! pactl get-sink-volume voicechanger >/dev/null 2>&1; then
+    if ! pactl load-module module-null-sink sink_name=voicechanger \
+      sink_properties=device.description=VoiceChanger >/dev/null; then
+      printf 'Failed to create the VoiceChanger virtual audio output.\n' >&2
+      exit 1
+    fi
+  fi
+
+  if ! pactl get-source-volume voicechanger.monitor >/dev/null; then
+    printf 'The voicechanger output exists, but its monitor input is unavailable. Check the audio server configuration.\n' >&2
+    exit 1
+  fi
+
+  # WebRTC clients filter out sink monitors. Expose it as a regular microphone.
+  if ! pactl get-source-volume voicechanger_input >/dev/null 2>&1; then
+    if ! pactl load-module module-remap-source master=voicechanger.monitor \
+      source_name=voicechanger_input \
+      "source_properties='device.description=\"Monitor of VoiceChanger\"'" >/dev/null; then
+      printf 'Failed to create the Monitor of VoiceChanger microphone input.\n' >&2
+      exit 1
+    fi
+  fi
+
+  if ! pactl get-source-volume voicechanger_input >/dev/null; then
+    printf 'The Monitor of VoiceChanger microphone input is unavailable.\n' >&2
+    exit 1
+  fi
+
+  printf 'Audio ready: select VoiceChanger as the voice-changer output, and Monitor of VoiceChanger as the call app input.\n'
+}
+
 case "$action" in
   lock)
     cd "$root"
@@ -56,6 +93,7 @@ case "$action" in
     exec "$venv/bin/python" "$root/nix/doctor.py" "$@"
     ;;
   start)
+    prepare_audio
     cd "$root/server"
     exec "$venv/bin/python" MMVCServerSIO.py --host 127.0.0.1 -p 18888 "$@"
     ;;

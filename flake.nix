@@ -32,6 +32,7 @@
             portaudio
             alsa-lib
             libpulseaudio
+            pulseaudio
             ffmpeg
             espeak-ng
           ];

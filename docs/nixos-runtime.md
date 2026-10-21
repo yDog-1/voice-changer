@@ -8,6 +8,8 @@ Docker / Podman、Conda、ホストへのCUDA Toolkitの導入は不要です。
 - Flakesが有効なNixOS（`x86_64-linux`）。
 - NVIDIAドライバーが有効で、ホストで`nvidia-smi`が成功すること。
   ドライバーの共有ライブラリは`/run/opengl-driver/lib`から参照します。
+- デスクトップセッションでPipeWireのPulseAudio互換機能（`pipewire-pulse`）、
+  またはPulseAudioが動作していること。
 - 初回のNixパッケージ、Pythonパッケージ、モデル取得のためのネット接続と空き容量。
   CUDA関連wheelとモデルを含むため、十数GB以上の余裕を推奨します。
 
@@ -46,6 +48,43 @@ nix run .#voice-changer -- --help
 
 別の場所から起動する場合は、書き込み可能なチェックアウトの絶対パスを
 `VOICE_CHANGER_ROOT`に指定してください。モデル・設定はそのチェックアウトに保存します。
+
+## Discordなどの通話アプリへの出力
+
+`nix run .#voice-changer`（および引数なしの`nix run`）は、サーバー起動前に
+仮想出力`VoiceChanger`（内部名`voicechanger`）を自動作成します。
+さらに、そのモニター（`voicechanger.monitor`）を通常のマイクとして公開する
+録音入力`Monitor of VoiceChanger`（`voicechanger_input`）を自動作成します。
+出力のモニターだけではWebRTCを使うアプリのマイク一覧から除外されるため、
+`module-remap-source`で独立した入力にしています。
+`pactl`はNix実行環境に含まれるため、手動導入は不要です。
+
+ブラウザ側のデバイスを使うclient device modeで、以下を選択してください。
+
+| 設定箇所 | デバイス |
+| --- | --- |
+| ボイスチェンジャーの入力 | 実際のマイク |
+| ボイスチェンジャーの出力 | `VoiceChanger` |
+| Discordなどの入力 | `Monitor of VoiceChanger` |
+| Discordなどの出力 | 普段のヘッドホン・スピーカー |
+
+出力先は自動で切り替わりません。ブラウザに仮想出力が表示されなければページを
+再読み込みするか、`pavucontrol`の「再生」タブでボイスチェンジャーの出力先を
+`VoiceChanger`に変更してください。
+
+Discordの入力一覧にモニターが表示されない場合は、マイクテストまたは通話を
+開始してから、`pavucontrol`の「録音」タブで「すべてのストリーム」を表示し、
+Discordに対応する録音ストリームの入力元を`Monitor of VoiceChanger`に変更します。
+表示名は音声サーバーの言語設定によって異なる場合があります。
+
+Discordの出力先を`VoiceChanger`にすると、相手の声まで送信してしまいます。
+また、この接続だけでは変換後の自分の声はヘッドホンに再生されません。
+
+既存の`voicechanger`と`voicechanger_input`は再利用するため、
+アプリを繰り返し起動しても重複しません。
+アプリ終了時には削除せず、音声サーバーの再起動またはログアウトまで残します。
+音声サーバーへの接続やデバイス作成に失敗すると、理由を表示して起動を中止します。
+`setup`、`doctor`、`lock`は音声デバイスを作成しません。
 
 ## 固定するもの
 
