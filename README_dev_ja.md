@@ -4,6 +4,8 @@
 
 ## 前提
 
+NixOSで実行する場合は、[Flakeを使った実行手順](docs/nixos-runtime.md)を参照してください。
+
 - Linux(ubuntu, debian) or WSL2, (not tested for other linux distributions and Mac)
 - Anaconda
 
