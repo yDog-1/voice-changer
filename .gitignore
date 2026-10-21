@@ -69,6 +69,8 @@ start_trainer.sh
 
 # venv
 venv/
+.venv/
+result
 
 
 beatrice_internal_api.cp310-win_amd64.pyd

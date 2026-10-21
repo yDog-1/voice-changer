@@ -1,0 +1,11 @@
+# Keep the application's pins; add missing inference and legacy build dependencies.
+-r ../server/requirements.txt
+-r build-requirements.in
+pyworld==0.3.3
+fairseq==0.12.2
+praat-parselmouth==0.4.3
+requests==2.32.3
+tqdm==4.67.1
+onnx==1.14.1
+# Older librosa uses APIs removed in newer numba.
+numba==0.57.1
