@@ -1,4 +1,8 @@
 # Shared by the FHS profile and runtime commands; sourcing has no side effects.
+voice_changer_root() {
+  printf '%s\n' "${VOICE_CHANGER_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/voice-changer}"
+}
+
 voice_changer_activate() {
   local venv="$1/.venv" site lib
   [[ -x "$venv/bin/python" ]] || return 0

@@ -1,20 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run from the checkout, not the immutable copy of the flake in /nix/store.
-root="${VOICE_CHANGER_ROOT:-$PWD}"
+source "${VOICE_CHANGER_ENV_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/environment.sh}"
+action="${1:-start}"
+shift || true
+
+root="$(voice_changer_root)"
+# Lock regeneration is a development operation on an explicit checkout.
+if [[ "$action" == lock ]]; then
+  root="${VOICE_CHANGER_ROOT:-$PWD}"
+elif [[ "$action" == setup && -z "${VOICE_CHANGER_ROOT:-}" ]]; then
+  if [[ -z "${VOICE_CHANGER_SOURCE:-}" ]]; then
+    printf 'Application source missing. Use voice-changer-setup or nix run .#setup.\n' >&2
+    exit 1
+  fi
+  mkdir -p "$root/server" "$root/client/demo" "$root/nix"
+  # Only packaged application files are replaced; user settings/models are not
+  # part of the source and are retained. Do not copy the store's read-only modes.
+  cp -R --no-preserve=mode "$VOICE_CHANGER_SOURCE/server/." "$root/server/"
+  cp -R --no-preserve=mode "$VOICE_CHANGER_SOURCE/client/demo/dist" "$root/client/demo/"
+  cp -R --no-preserve=mode "$VOICE_CHANGER_SOURCE/nix/." "$root/nix/"
+fi
+
 if [[ ! -f "$root/server/MMVCServerSIO.py" || ! -f "$root/nix/requirements.in" ]]; then
-  printf 'Run from the repository root, or set VOICE_CHANGER_ROOT to the checkout.\n' >&2
+  printf 'Application missing in %s. Run voice-changer-setup (nix run .#setup), or set VOICE_CHANGER_ROOT to a checkout.\n' "$root" >&2
   exit 1
 fi
 root="$(realpath "$root")"
 venv="$root/.venv"
-action="${1:-start}"
-shift || true
 
 require_python310() {
   if ! "$venv/bin/python" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 10))'; then
-    printf 'Expected Python 3.10 in %s. Move the existing .venv aside and rerun nix run .#setup.\n' "$venv" >&2
+    printf 'Expected Python 3.10 in %s. Move the existing .venv aside and rerun voice-changer-setup (nix run .#setup).\n' "$venv" >&2
     exit 1
   fi
 }
@@ -75,17 +92,16 @@ case "$action" in
       -r "$root/nix/build-requirements.lock"
     uv pip sync --python "$venv/bin/python" --require-hashes --no-build-isolation --index-url https://pypi.org/simple \
       "$root/nix/requirements.lock"
-    printf '\nSetup complete. Run: nix run .#doctor\n'
+    printf '\nSetup complete in %s. Run voice-changer-doctor (nix run .#doctor).\n' "$root"
     exit
     ;;
 esac
 
 if [[ ! -x "$venv/bin/python" ]]; then
-  printf 'Python environment missing. Run: nix run .#setup\n' >&2
+  printf 'Python environment missing. Run voice-changer-setup (nix run .#setup).\n' >&2
   exit 1
 fi
 require_python310
-source "${VOICE_CHANGER_ENV_SCRIPT:-$root/nix/environment.sh}"
 voice_changer_activate "$root"
 
 case "$action" in

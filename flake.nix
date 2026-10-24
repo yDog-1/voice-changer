@@ -8,6 +8,12 @@
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
+      application = pkgs.runCommand "voice-changer-application" { } ''
+        mkdir -p "$out/client/demo"
+        cp -R ${./server} "$out/server"
+        cp -R ${./client/demo/dist} "$out/client/demo/dist"
+        cp -R ${./nix} "$out/nix"
+      '';
       runtime = pkgs.buildFHSEnv {
         name = "voice-changer-env";
         unsharePid = true;
@@ -44,13 +50,14 @@
           export LD_LIBRARY_PATH="/run/opengl-driver/lib:/usr/lib:/usr/lib64''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           export VOICE_CHANGER_ENV_SCRIPT=${./nix/environment.sh}
           source "$VOICE_CHANGER_ENV_SCRIPT"
-          voice_changer_activate "''${VOICE_CHANGER_ROOT:-$PWD}"
+          voice_changer_activate "$(voice_changer_root)"
         '';
         runScript = "bash";
       };
       command =
         name:
         pkgs.writeShellScriptBin "voice-changer-${name}" ''
+          export VOICE_CHANGER_SOURCE=${application}
           exec ${runtime}/bin/voice-changer-env ${./nix/runtime.sh} ${name} "$@"
         '';
       commands = {

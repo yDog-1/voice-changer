@@ -17,7 +17,10 @@ Docker / Podman、Conda、ホストへのCUDA Toolkitの導入は不要です。
 
 ## セットアップと起動
 
-**リポジトリのルートディレクトリで**実行してください。
+以下の`nix run .#…`はリポジトリのルートディレクトリで実行してください。
+実行用ファイル・設定・モデル・Python環境は、デフォルトで
+`${XDG_DATA_HOME:-$HOME/.local/share}/voice-changer/`に配置します。
+カレントディレクトリのチェックアウトには保存しません。
 
 ```sh
 nix run .#setup
@@ -30,8 +33,9 @@ Chromeで <http://localhost:18888/> を開きます。既存のビルド済み�
 マイクの利用を許可し、ブラウザ側の入力・出力デバイスを選択してください。
 サーバーは`Ctrl+C`で終了します。
 
-`setup`は`.venv/`を作成してロック済み依存を同期します。モデルはサーバーの
-初回起動時にアプリが取得し、`server/pretrain/`と`server/model_dir/`へ保存します。
+`setup`は保存先にパッケージ内の実行用ファイルを配置し、`.venv/`を作成して
+ロック済み依存を同期します。モデルはサーバーの初回起動時にアプリが取得し、
+保存先の`server/pretrain/`と`server/model_dir/`へ保存します。
 シェルへの入場・起動時にPythonパッケージを自動インストールしません。
 
 既存の`.venv/`がPython 3.10以外の場合は、セットアップ・起動時にエラーにします。
@@ -46,8 +50,15 @@ nix run .#voice-changer -- --https true
 nix run .#voice-changer -- --help
 ```
 
-別の場所から起動する場合は、書き込み可能なチェックアウトの絶対パスを
-`VOICE_CHANGER_ROOT`に指定してください。モデル・設定はそのチェックアウトに保存します。
+既存のチェックアウトとその設定・モデルを使う場合は、書き込み可能な
+チェックアウトの絶対パスを`VOICE_CHANGER_ROOT`に指定してください。
+この指定がある場合、実行用ファイルの自動配置は行いません。
+
+```sh
+export VOICE_CHANGER_ROOT=/absolute/path/to/voice-changer
+```
+
+既存チェックアウトのデータをデフォルトの保存先へ自動移行することはありません。
 
 ### プロファイルへのインストール
 
@@ -60,8 +71,21 @@ voice-changer-doctor
 voice-changer-start
 ```
 
-依存ロックの更新には`voice-changer-lock`を使用します。
-これらもリポジトリのルートで実行するか、`VOICE_CHANGER_ROOT`を指定してください。
+インストール後の`setup`・`doctor`・`start`は、任意のディレクトリから実行できます。
+パッケージを更新したら`voice-changer-setup`を再実行してください。
+実行用ファイルと依存を更新し、既存の設定やダウンロードしたモデルは保持します。
+
+通常の保存先は以下です（`XDG_DATA_HOME`が未設定の場合）。
+
+| 内容 | 保存先 |
+| --- | --- |
+| サーバーの保存設定 | `~/.local/share/voice-changer/server/stored_setting.json` |
+| モデルとスロット設定 | `~/.local/share/voice-changer/server/model_dir/` |
+| 事前学習済みモデル | `~/.local/share/voice-changer/server/pretrain/` |
+| Python環境 | `~/.local/share/voice-changer/.venv/` |
+
+依存ロックの更新は開発用操作です。`voice-changer-lock`はリポジトリのルートで
+実行するか、`VOICE_CHANGER_ROOT`に対象のチェックアウトを指定してください。
 引数なしの`nix run`は、引き続きサーバーを起動します。
 
 ## Discordなどの通話アプリへの出力
@@ -137,6 +161,9 @@ nix develop
 python --version
 bash nix/runtime.sh start --logLevel info
 ```
+
+チェックアウト内の環境で開発する場合は、入場前に
+`export VOICE_CHANGER_ROOT="$PWD"`を設定し、`nix run .#setup`を実行してください。
 
 FHS開発シェルは対話利用向けです。単発のコマンドをFHS内で実行する場合は、
 `nix develop -c`ではなく次の形式を使用してください。
