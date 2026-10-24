@@ -49,6 +49,21 @@ nix run .#voice-changer -- --help
 別の場所から起動する場合は、書き込み可能なチェックアウトの絶対パスを
 `VOICE_CHANGER_ROOT`に指定してください。モデル・設定はそのチェックアウトに保存します。
 
+### プロファイルへのインストール
+
+`nix profile add .`で、次の4コマンドをまとめてインストールできます。
+
+```sh
+nix profile add .
+voice-changer-setup
+voice-changer-doctor
+voice-changer-start
+```
+
+依存ロックの更新には`voice-changer-lock`を使用します。
+これらもリポジトリのルートで実行するか、`VOICE_CHANGER_ROOT`を指定してください。
+引数なしの`nix run`は、引き続きサーバーを起動します。
+
 ## Discordなどの通話アプリへの出力
 
 `nix run .#voice-changer`（および引数なしの`nix run`）は、サーバー起動前に

@@ -53,8 +53,7 @@
         pkgs.writeShellScriptBin "voice-changer-${name}" ''
           exec ${runtime}/bin/voice-changer-env ${./nix/runtime.sh} ${name} "$@"
         '';
-      commands = rec {
-        default = voice-changer;
+      commands = {
         voice-changer = command "start";
         setup = command "setup";
         doctor = command "doctor";
@@ -64,12 +63,17 @@
     {
       packages.${system} = commands // {
         inherit runtime;
+        default = pkgs.symlinkJoin {
+          name = "voice-changer";
+          paths = builtins.attrValues commands;
+          meta.mainProgram = "voice-changer-start";
+        };
       };
       apps.${system} = pkgs.lib.mapAttrs (name: package: {
         type = "app";
         meta.description = "voice-changer ${name} in the pinned legacy runtime";
         program = pkgs.lib.getExe package;
-      }) commands;
+      }) (commands // { default = commands.voice-changer; });
       devShells.${system}.default = runtime.env;
       formatter.${system} = pkgs.nixfmt-rfc-style;
     };
